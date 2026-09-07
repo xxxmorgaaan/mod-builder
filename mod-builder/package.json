@@ -1,0 +1,16 @@
+{
+  "name": "alem-mod-builder",
+  "version": "1.0.0",
+  "description": "Веб-конструктор модов для игры Alem — заполняете поля, жмёте «Экспорт» и получаете готовый .zip мода",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "license": "MIT"
+}
