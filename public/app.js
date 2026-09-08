@@ -44,6 +44,40 @@ function slugify(str) {
     .replace(/\s+/g, '_') || 'my_mod';
 }
 
+// Практическая транслитерация — только чтобы не заставлять человека
+// придумывать латинский id и черновой перевод самому.
+const TRANSLIT_MAP = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z',
+  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
+  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh',
+  щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+function translit(str) {
+  return (str || '').toString().toLowerCase().split('')
+    .map(ch => (TRANSLIT_MAP[ch] !== undefined ? TRANSLIT_MAP[ch] : ch)).join('');
+}
+
+/** id-заглушку из названия: snake_case (kylysh) или PascalCase (Mithril). */
+function idFromName(name, existingIds, mode) {
+  const t = translit(name);
+  let base;
+  if (mode === 'pascal') {
+    base = t.split(/[^a-z0-9]+/i).filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('') || 'Item';
+  } else {
+    base = t.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'item';
+  }
+  let id = base, n = 1;
+  while (existingIds.has(id)) id = mode === 'pascal' ? `${base}${++n}` : `${base}_${++n}`;
+  return id;
+}
+
+/** Черновой перевод «на глаз» — заготовка, которую пользователь потом поправит. */
+function guessTranslation(ruText) {
+  return translit(ruText).split(/[^a-z0-9]+/i).filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || ruText;
+}
+
 class FieldError extends Error {
   constructor(field, msg) {
     super(`«${field.label}»: ${msg}`);
@@ -222,6 +256,15 @@ function writeFieldToForm(field, formEl, value) {
 // ================================================== УНИВЕРСАЛЬНАЯ СЕКЦИЯ
 
 const sectionEditState = {}; // schemaKey -> editing index or null
+const sectionRenderers = {}; // schemaKey -> function that redraws its card list
+
+/** Добавляет черновую строку перевода, если такой русской строки ещё нет. */
+function ensureLocDraft(ruText) {
+  if (!ruText) return;
+  if (state.tables.loc.some(r => r.ru === ruText)) return;
+  state.tables.loc.push({ ru: ruText, en: guessTranslation(ruText) });
+  if (sectionRenderers.loc) sectionRenderers.loc();
+}
 
 /** Блок «Открыть в технологиях» — общий для оружия/одежды/рецептов. */
 function buildTechLinkBox() {
@@ -405,6 +448,14 @@ function initSchemaSection(schemaKey) {
       return;
     }
 
+    // Пустой id — сгенерируем сами из названия, чтобы не заставлять его придумывать.
+    if (schema.idFrom && !item.id && item[schema.idFrom]) {
+      const existingIds = new Set(state.tables[schemaKey]
+        .map((it, i) => (i === sectionEditState[schemaKey] ? null : it[schema.keyField]))
+        .filter(Boolean));
+      item.id = idFromName(item[schema.idFrom], existingIds, schema.idCase);
+    }
+
     const techChoice = techUI ? techUI.getChoice() : null;
 
     const list = state.tables[schemaKey];
@@ -418,6 +469,7 @@ function initSchemaSection(schemaKey) {
       cancelBtn.hidden = true;
     }
     applyTechLink(schemaKey, item, techChoice);
+    if (item.name) ensureLocDraft(item.name);
     form.reset();
     if (techUI) techUI.reset();
     saveState();
@@ -469,6 +521,7 @@ function initSchemaSection(schemaKey) {
     tableMount.appendChild(wrap);
   }
 
+  sectionRenderers[schemaKey] = renderList;
   renderList();
   refreshCounts();
 }
@@ -679,6 +732,23 @@ function validateProject() {
       if (seen.has(key)) warnings.push(`Повтор ключа «${key}» в таблице «${schema.title}» — вторая запись перезапишет первую.`);
       seen.add(key);
     });
+  });
+
+  // Не привязано ни к одной технологии — сделать вещь в игре будет нельзя.
+  ['weapons', 'apparel', 'recipes'].forEach(k => {
+    const schema = SCHEMAS[k];
+    state.tables[k].forEach(item => {
+      const keys = schema.techLink(item, state.tables.materials);
+      const unlocked = keys.some(key => state.tables.techs.some(t => (t.unlocks || []).includes(key)));
+      if (!unlocked) warnings.push(`«${schema.itemLabel(item)}» не открыто ни одной технологией — в игре его нельзя будет сделать.`);
+    });
+  });
+
+  // Черновые переводы, которые ещё не поправили руками.
+  state.tables.loc.forEach(row => {
+    if (row.ru && row.en && row.en === guessTranslation(row.ru) && /[a-z]/i.test(row.en)) {
+      warnings.push(`Перевод «${row.ru} → ${row.en}» — черновой (получен транслитерацией), стоит проверить.`);
+    }
   });
 
   const usedPaths = new Set();

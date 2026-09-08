@@ -23,10 +23,11 @@ const SCHEMAS = {
   weapons: {
     title: 'оружие',
     keyField: 'id',
+    idFrom: 'name', idCase: 'snake',
     itemLabel: it => `${it.name || it.id} ${it.id ? `· ${it.id}` : ''}`,
     fields: [
-      { name: 'id', label: 'id (ключ)', type: 'text', required: true, placeholder: 'kylysh', hint: 'Латиницей, уникально' },
-      { name: 'name', label: 'Название', type: 'text', placeholder: 'Кылыш' },
+      { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Кылыш' },
+      { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'kylysh', hint: 'Латиницей, если хотите задать сами' },
       { name: 'spriteId', label: 'spriteId', type: 'text', hint: 'Чья картинка используется, если своей нет' },
       { name: 'melee', label: 'Ближний бой', type: 'checkbox' },
       { name: 'family', label: 'Семейство материалов', type: 'checkbox', hint: 'Породит варианты по materials' },
@@ -81,10 +82,11 @@ const SCHEMAS = {
   apparel: {
     title: 'одежду',
     keyField: 'id',
+    idFrom: 'name', idCase: 'snake',
     itemLabel: it => `${it.name || it.id} ${it.id ? `· ${it.id}` : ''}`,
     fields: [
-      { name: 'id', label: 'id (ключ)', type: 'text', required: true, placeholder: 'steppecoat' },
-      { name: 'name', label: 'Название', type: 'text', placeholder: 'Степной кафтан' },
+      { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Степной кафтан' },
+      { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'steppecoat' },
       { name: 'slot', label: 'Слот', type: 'select', options: [
         { value: '', label: '— по умолчанию (Torso) —' },
         { value: 'Head', label: 'Head · голова' },
@@ -115,10 +117,11 @@ const SCHEMAS = {
   resources: {
     title: 'ресурс',
     keyField: 'id',
+    idFrom: 'name', idCase: 'pascal',
     itemLabel: it => `${it.name || it.id} ${it.id ? `· ${it.id}` : ''}`,
     fields: [
-      { name: 'id', label: 'id (ключ)', type: 'text', required: true, placeholder: 'Mithril', hint: 'С заглавной буквы' },
-      { name: 'name', label: 'Название (рус.)', type: 'text', placeholder: 'Мифрил' },
+      { name: 'name', label: 'Название (рус.)', type: 'text', required: true, placeholder: 'Мифрил' },
+      { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'Mithril', hint: 'С заглавной буквы, если хотите задать сами' },
       { name: 'nameEn', label: 'Название (англ.)', type: 'text', placeholder: 'Mithril' },
       { name: 'weight', label: 'Вес единицы', type: 'number', step: '0.01' },
       { name: 'value', label: 'Цена', type: 'number', step: '1' },
@@ -154,6 +157,7 @@ const SCHEMAS = {
   recipes: {
     title: 'рецепт',
     keyField: 'id',
+    idFrom: 'name', idCase: 'snake',
     itemLabel: it => `${it.name || it.id} ${it.station ? `· ${it.station}` : ''}`,
     fields: [
       { name: 'station', label: 'Станок', type: 'select', required: true, options: [
@@ -168,8 +172,8 @@ const SCHEMAS = {
         { value: 'tailor', label: 'tailor · швейный стол' },
         { value: 'craft', label: 'craft · верстак' },
       ] },
-      { name: 'id', label: 'id (ключ рецепта)', type: 'text', required: true, placeholder: 'mithril_ingot' },
-      { name: 'name', label: 'Название заказа', type: 'text', placeholder: 'Выплавить мифрил' },
+      { name: 'name', label: 'Название заказа', type: 'text', required: true, placeholder: 'Выплавить мифрил' },
+      { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'mithril_ingot' },
       { name: 'in1Type', label: 'Ингредиент 1: тип', type: 'text', placeholder: 'SilverOre' },
       { name: 'in1', label: 'Ингредиент 1: кол-во', type: 'number', step: '1' },
       { name: 'in1Group', label: 'Ингредиент 1: группа', type: 'select', numeric: true, options: [
@@ -219,10 +223,11 @@ const SCHEMAS = {
   techs: {
     title: 'технологию',
     keyField: 'id',
+    idFrom: 'name', idCase: 'snake',
     itemLabel: it => `${it.name || it.id} ${it.id ? `· ${it.id}` : ''}`,
     fields: [
-      { name: 'id', label: 'id (ключ)', type: 'text', required: true, placeholder: 'steppe_smithing' },
-      { name: 'name', label: 'Название', type: 'text', placeholder: 'Степная ковка' },
+      { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Степная ковка' },
+      { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'steppe_smithing' },
       { name: 'branch', label: 'Ветка', type: 'text', placeholder: 'Ремёсла' },
       { name: 'era', label: 'Эпоха', type: 'select', numeric: true, options: [
         { value: '', label: '— по умолчанию (1) —' },
