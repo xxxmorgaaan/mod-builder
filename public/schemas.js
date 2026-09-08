@@ -318,3 +318,61 @@ const NAME_LISTS = [
   { key: 'rareFemale', label: 'Редкие женские имена' },
   { key: 'chronic', label: 'Хронические болячки' },
 ];
+
+/**
+ * Автопривязка к технологиям.
+ * Для схем ниже в форме появляется блок «Открыть в технологиях»:
+ * можно сразу добавить ключ доступа в уже существующий тех или создать
+ * новый — вручную лазить в вкладку «Технологии» после этого не нужно.
+ * Функция возвращает список ключей unlocks, которые нужно вписать технологии.
+ */
+SCHEMAS.weapons.techLink = (item, materials) => {
+  if (item.family) {
+    const mats = (materials || []).filter(m => m.key);
+    if (!mats.length) return [`weapon:${item.id}`];
+    return mats.map(m => `weaponfam:${item.id}@${m.key}`);
+  }
+  return [`weapon:${item.id}`];
+};
+
+SCHEMAS.apparel.techLink = (item) => [`apparel:${item.id}`];
+
+SCHEMAS.recipes.techLink = (item) => [`recipe:${item.id}`];
+
+/**
+ * Номера look, которые в слоях Head / Torso / TorsoOver / ArmorOver уже
+ * заняты встроенными вещами игры (см. раздел про облик колониста) —
+ * свои номера должны начинаться после них. Для Legs игра ничего не
+ * резервирует, поэтому там можно начинать с 0.
+ */
+const LOOK_RESERVED_START = {
+  Head: 3, Torso: 3, TorsoOver: 3, ArmorOver: 3, Legs: 0,
+};
+
+/**
+ * Черновые стартовые характеристики по типу оружия — не «правильный»
+ * баланс, а просто разумная точка отсчёта, чтобы не гадать, что писать
+ * в dmg/interval/range/drawScale. Пример кылыша и значения ножа/копья
+ * из инструкции взяты как есть, остальное — по аналогии.
+ */
+const WEAPON_TEMPLATES = {
+  knife:  { melee: true, dmg: 9,  interval: 1.6, range: 1.4, drawScale: 0.55, dtype: 'Sharp', craftWork: 2, hitLabel: 'Удар ножом' },
+  sword:  { melee: true, dmg: 14, interval: 1.8, range: 1.5, drawScale: 0.9,  dtype: 'Sharp', craftWork: 5, hitLabel: 'Удар мечом' },
+  spear:  { melee: true, dmg: 12, interval: 2.0, range: 1.9, drawScale: 0.88, dtype: 'Sharp', craftWork: 5, hitLabel: 'Удар копьём' },
+  mace:   { melee: true, dmg: 16, interval: 2.2, range: 1.4, drawScale: 0.8,  dtype: 'Blunt', craftWork: 5, hitLabel: 'Удар дубиной' },
+  bow:    { melee: false, dmg: 10, interval: 2.0, range: 18, drawScale: 1.0, dtype: 'Sharp', craftWork: 6, hitLabel: 'Попадание стрелой' },
+  pistol: { melee: false, dmg: 9,  interval: 1.2, range: 15, accMul: 0.9, drawScale: 0.6, dtype: 'Sharp', craftWork: 6, hitLabel: 'Попадание пулей' },
+  rifle:  { melee: false, dmg: 15, interval: 1.9, range: 26, accMul: 1.1, drawScale: 1.1, dtype: 'Sharp', craftWork: 9, hitLabel: 'Попадание пулей' },
+};
+
+const WEAPON_TEMPLATE_OPTIONS = [
+  { value: '', label: '— без шаблона —' },
+  { value: 'knife', label: 'Нож' },
+  { value: 'sword', label: 'Меч' },
+  { value: 'spear', label: 'Копьё' },
+  { value: 'mace', label: 'Дубина / булава' },
+  { value: 'bow', label: 'Лук' },
+  { value: 'pistol', label: 'Пистолет' },
+  { value: 'rifle', label: 'Ружьё / винтовка' },
+];
+

@@ -223,6 +223,91 @@ function writeFieldToForm(field, formEl, value) {
 
 const sectionEditState = {}; // schemaKey -> editing index or null
 
+/** Блок «Открыть в технологиях» — общий для оружия/одежды/рецептов. */
+function buildTechLinkBox() {
+  const box = el('div', { class: 'tech-link-box' });
+  box.appendChild(el('h3', {}, '⚙ Открыть в технологиях'));
+  box.appendChild(el('p', { class: 'field-hint' }, 'Без этого запись останется в таблице, но её нигде нельзя будет сделать в игре — ключ доступа впишется автоматически.'));
+
+  const select = el('select', {});
+  const newFields = el('div', { class: 'tech-link-new field-grid', hidden: true });
+  const nameInput = el('input', { type: 'text', placeholder: 'Название технологии' });
+  const branchInput = el('input', { type: 'text', placeholder: 'Ремёсла', value: 'Ремёсла' });
+  const eraInput = el('input', { type: 'number', value: '1', min: 1, max: 5, step: 1 });
+  const costInput = el('input', { type: 'number', value: '100', step: 1 });
+  [
+    ['Название', nameInput], ['Ветка', branchInput], ['Эпоха (1–5)', eraInput], ['Стоимость', costInput],
+  ].forEach(([label, input]) => {
+    newFields.appendChild(el('div', { class: 'field' }, [el('label', {}, label), input]));
+  });
+
+  function refreshOptions() {
+    const current = select.value;
+    select.innerHTML = '';
+    select.appendChild(el('option', { value: '__none' }, 'Не привязывать — открою вручную'));
+    select.appendChild(el('option', { value: '__new' }, '+ Создать новую технологию'));
+    state.tables.techs.forEach(t => {
+      select.appendChild(el('option', { value: t.id }, `${t.name || t.id} (${t.id})`));
+    });
+    if (Array.from(select.options).some(o => o.value === current)) select.value = current;
+  }
+  select.addEventListener('focus', refreshOptions);
+  select.addEventListener('change', () => { newFields.hidden = select.value !== '__new'; });
+  refreshOptions();
+
+  box.appendChild(select);
+  box.appendChild(newFields);
+
+  return {
+    box,
+    refreshOptions,
+    reset() {
+      select.value = '__none';
+      newFields.hidden = true;
+      nameInput.value = ''; branchInput.value = 'Ремёсла'; eraInput.value = '1'; costInput.value = '100';
+    },
+    getChoice() {
+      if (select.value === '__none') return { mode: 'none' };
+      if (select.value === '__new') {
+        return {
+          mode: 'new',
+          name: nameInput.value.trim(), branch: branchInput.value.trim(),
+          era: eraInput.value, cost: costInput.value,
+        };
+      }
+      return { mode: 'existing', techId: select.value };
+    },
+  };
+}
+
+/** Дописывает ключ(и) доступа новой записи в выбранную/новую технологию. */
+function applyTechLink(schemaKey, item, choice) {
+  const schema = SCHEMAS[schemaKey];
+  if (!schema.techLink || !choice || choice.mode === 'none') return;
+  const keys = schema.techLink(item, state.tables.materials);
+  if (!keys.length) return;
+
+  if (choice.mode === 'existing') {
+    const tech = state.tables.techs.find(t => t.id === choice.techId);
+    if (!tech) return;
+    tech.unlocks = Array.from(new Set([...(tech.unlocks || []), ...keys]));
+    return;
+  }
+
+  const existingIds = new Set(state.tables.techs.map(t => t.id));
+  let id = slugify(item.id || item.name) + '_tech';
+  let n = 1;
+  while (existingIds.has(id)) id = slugify(item.id || item.name) + '_tech' + (++n);
+  state.tables.techs.push({
+    id,
+    name: choice.name || `Технология: ${item.name || item.id}`,
+    branch: choice.branch || 'Ремёсла',
+    era: choice.era ? Number(choice.era) : 1,
+    cost: choice.cost ? Number(choice.cost) : 100,
+    unlocks: keys,
+  });
+}
+
 function initSchemaSection(schemaKey) {
   const schema = SCHEMAS[schemaKey];
   const formMount = qs(`.form-mount[data-schema="${schemaKey}"]`);
@@ -236,6 +321,50 @@ function initSchemaSection(schemaKey) {
   schema.fields.forEach(f => grid.appendChild(buildFieldControl(f, schemaKey)));
   form.appendChild(grid);
 
+  // --- Шаблон характеристик (только для оружия) ------------------------
+  if (schemaKey === 'weapons') {
+    const tplField = el('div', { class: 'field field-wide' });
+    tplField.appendChild(el('label', {}, 'Шаблон (заполнит характеристики — можно поправить или очистить)'));
+    const tplSelect = el('select', {});
+    WEAPON_TEMPLATE_OPTIONS.forEach(o => tplSelect.appendChild(el('option', { value: o.value }, o.label)));
+    tplSelect.addEventListener('change', () => {
+      const tpl = WEAPON_TEMPLATES[tplSelect.value];
+      if (!tpl) return;
+      schema.fields.forEach(f => {
+        if (tpl[f.name] === undefined) return;
+        if (f.type === 'checkbox') { form.elements[f.name].checked = tpl[f.name]; return; }
+        if ((form.elements[f.name].value || '').trim() !== '') return; // не затираем то, что уже вписали
+        writeFieldToForm(f, form, tpl[f.name]);
+      });
+    });
+    tplField.appendChild(tplSelect);
+    tplField.appendChild(el('p', { class: 'field-hint' }, 'Черновые значения для старта, не игровой баланс — смело меняйте.'));
+    grid.insertBefore(tplField, grid.firstChild);
+  }
+
+  // --- Автономер «look» по занятому слоту (только для одежды) ----------
+  if (schemaKey === 'apparel') {
+    const slotEl = form.elements['slot'];
+    const lookEl = form.elements['look'];
+    if (slotEl && lookEl) {
+      slotEl.addEventListener('change', () => {
+        if ((lookEl.value || '').trim() !== '') return;
+        const slot = slotEl.value || 'Torso';
+        const start = LOOK_RESERVED_START[slot] ?? 0;
+        const used = new Set(state.tables.apparel
+          .filter(a => a.slot === slot && a.look !== undefined)
+          .map(a => Number(a.look)));
+        let n = start;
+        while (used.has(n)) n++;
+        lookEl.value = n;
+      });
+    }
+  }
+
+  // --- Автопривязка к технологиям (оружие / одежда / рецепты) ----------
+  const techUI = schema.techLink ? buildTechLinkBox() : null;
+  if (techUI) form.appendChild(techUI.box);
+
   const errorBox = el('p', { class: 'form-error', hidden: true });
   form.appendChild(errorBox);
 
@@ -248,6 +377,7 @@ function initSchemaSection(schemaKey) {
 
   cancelBtn.addEventListener('click', () => {
     form.reset();
+    if (techUI) techUI.reset();
     sectionEditState[schemaKey] = null;
     submitBtn.textContent = `Добавить ${schema.title}`;
     cancelBtn.hidden = true;
@@ -275,6 +405,8 @@ function initSchemaSection(schemaKey) {
       return;
     }
 
+    const techChoice = techUI ? techUI.getChoice() : null;
+
     const list = state.tables[schemaKey];
     const editIdx = sectionEditState[schemaKey];
     if (editIdx === null) {
@@ -285,9 +417,12 @@ function initSchemaSection(schemaKey) {
       submitBtn.textContent = `Добавить ${schema.title}`;
       cancelBtn.hidden = true;
     }
+    applyTechLink(schemaKey, item, techChoice);
     form.reset();
+    if (techUI) techUI.reset();
     saveState();
     renderList();
+    if (techUI) techUI.refreshOptions();
   });
 
   formMount.appendChild(form);

@@ -217,6 +217,24 @@ code{
   margin: 12px 0 0;
 }
 
+.tech-link-box{
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--panel-2);
+  border: 1px dashed var(--border-2);
+  border-radius: 3px;
+}
+.tech-link-box h3{ margin: 0 0 4px; font-size: 13.5px; color: var(--accent); }
+.tech-link-box > select{
+  background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+  font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 3px; width: 100%; max-width: 420px;
+}
+.tech-link-new{ margin-top: 12px; }
+.tech-link-new input{
+  background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+  font-family: inherit; font-size: 13.5px; padding: 7px 9px; border-radius: 3px; width: 100%;
+}
+
 .form-actions{ display:flex; gap: 10px; margin-top: 16px; }
 
 /* ---------------------------------------------------------------- BUTTONS */
