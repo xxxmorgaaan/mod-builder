@@ -683,11 +683,15 @@ function initSchemaSection(schemaKey) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     errorBox.hidden = true;
-    const item = {};
+    // При редактировании стартуем с копии старой записи — так поля, которых
+    // нет в этой форме (например, из импортированного стороннего мода),
+    // не потеряются молча.
+    const editIdxAtStart = sectionEditState[schemaKey];
+    const item = editIdxAtStart !== null ? { ...state.tables[schemaKey][editIdxAtStart] } : {};
     try {
       schema.fields.forEach(f => {
         const v = readFieldFromForm(f, form);
-        if (v !== undefined) item[f.name] = v;
+        if (v !== undefined) item[f.name] = v; else delete item[f.name];
       });
     } catch (err) {
       errorBox.textContent = err.message;
@@ -1306,8 +1310,7 @@ function initProjectControls() {
           names: { ...fresh.names, ...(parsed.names || {}) },
           textures: Array.isArray(parsed.textures) ? parsed.textures : [],
         };
-        saveState();
-        location.reload();
+        saveAndRefresh();
       } catch (err) {
         alert('Не удалось прочитать файл проекта: ' + err.message);
       }
@@ -1319,12 +1322,117 @@ function initProjectControls() {
   qs('#btnResetProject').addEventListener('click', () => {
     if (!confirm('Удалить все введённые данные и начать заново? Это нельзя отменить.')) return;
     state = defaultState();
-    saveState();
-    location.reload();
+    saveAndRefresh();
+  });
+
+  qs('#loadModZipInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('Загрузка мода из архива заменит все текущие данные в конструкторе. Если не сохранили текущую работу — сначала сохраните её кнопкой «Сохранить проект». Продолжить?')) {
+      e.target.value = '';
+      return;
+    }
+    importModZip(file);
+    e.target.value = '';
   });
 }
 
+/** Разбирает .zip уже готового мода (свой экспорт или чужой) и полностью заменяет им текущий проект. */
+async function importModZip(file) {
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const names = Object.keys(zip.files);
+    const modJsonName = names.find(n => /(^|\/)mod\.json$/i.test(n) && !zip.files[n].dir);
+    if (!modJsonName) {
+      alert('В архиве не найден mod.json — похоже, это не мод для Alem (или он лежит не на верхнем уровне архива).');
+      return;
+    }
+    const prefix = modJsonName.slice(0, modJsonName.length - 'mod.json'.length);
+
+    async function readJson(name) {
+      const entry = zip.file(prefix + name);
+      if (!entry) return {};
+      try { return JSON.parse(await entry.async('string')) || {}; }
+      catch (err) { console.warn(`Не удалось разобрать ${name}:`, err); return {}; }
+    }
+
+    const [modJson, weaponsJson, apparelJson, resourcesJson, recipesJson, buildingsJson, techsJson, pawnsJson, locJson] =
+      await Promise.all(['mod.json', 'weapons.json', 'apparel.json', 'resources.json', 'recipes.json', 'buildings.json', 'techs.json', 'pawns.json', 'loc.json'].map(readJson));
+
+    const fresh = defaultState();
+    const next = {
+      info: { ...fresh.info, ...modJson },
+      tables: {
+        weapons: Array.isArray(weaponsJson.weapons) ? weaponsJson.weapons : [],
+        materials: Array.isArray(weaponsJson.materials) ? weaponsJson.materials : [],
+        apparel: Array.isArray(apparelJson.apparel) ? apparelJson.apparel : [],
+        resources: Array.isArray(resourcesJson.resources) ? resourcesJson.resources : [],
+        recipes: Array.isArray(recipesJson.recipes) ? recipesJson.recipes : [],
+        buildings: Array.isArray(buildingsJson.buildings) ? buildingsJson.buildings : [],
+        techs: Array.isArray(techsJson.techs) ? techsJson.techs : [],
+        traits: Array.isArray(pawnsJson.traits) ? pawnsJson.traits : [],
+        traitPairs: Array.isArray(pawnsJson.traitPairs) ? pawnsJson.traitPairs : [],
+        childhoods: Array.isArray(pawnsJson.childhoods) ? pawnsJson.childhoods : [],
+        adulthoods: Array.isArray(pawnsJson.adulthoods) ? pawnsJson.adulthoods : [],
+        rareFullfirst: Array.isArray(pawnsJson.rareFullfirst) ? pawnsJson.rareFullfirst : [],
+        loc: Object.entries(locJson.en || {}).map(([ru, en]) => ({ ru, en })),
+      },
+      names: {},
+      textures: [],
+    };
+    NAME_LISTS.forEach(({ key }) => { next.names[key] = Array.isArray(pawnsJson[key]) ? pawnsJson[key] : []; });
+
+    const texturePrefix = `${prefix}textures/`;
+    const textureNames = names.filter(n => n.startsWith(texturePrefix) && !zip.files[n].dir);
+    for (const n of textureNames) {
+      const relPath = n.slice(texturePrefix.length);
+      const ext = (relPath.split('.').pop() || 'png').toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+      const base64 = await zip.files[n].async('base64');
+      next.textures.push({
+        id: uid(), fileName: relPath.split('/').pop(), path: relPath,
+        dataUrl: `data:${mime};base64,${base64}`, size: Math.round(base64.length * 0.75),
+      });
+    }
+
+    state = next;
+    saveAndRefresh();
+  } catch (err) {
+    alert('Не удалось прочитать архив: ' + err.message);
+  }
+}
+
 // =================================================================== INIT
+
+/** Пересобирает всю форму по текущему state — без loadState() и без reload(). */
+function rebuildUI() {
+  qsa('.form-mount, .table-mount').forEach(m => { m.innerHTML = ''; });
+  const infoForm = qs('#infoForm'); if (infoForm) infoForm.innerHTML = '';
+  const nameForm = qs('#nameListsForm'); if (nameForm) nameForm.innerHTML = '';
+  const texBody = qs('#texCatBody'); if (texBody) texBody.innerHTML = '';
+  Object.keys(sectionRenderers).forEach(k => delete sectionRenderers[k]);
+  Object.keys(sectionEditState).forEach(k => delete sectionEditState[k]);
+
+  initInfoForm();
+  TABLE_KEYS.forEach(k => { if (SCHEMAS[k]) initSchemaSection(k); });
+  initNameLists();
+  initTextures();
+  refreshCounts();
+}
+
+/** Сохраняет и обновляет экран: перезагружает страницу, если сохранение в localStorage удалось,
+ *  иначе пересобирает форму на месте, чтобы не потерять только что загруженные данные. */
+function saveAndRefresh() {
+  saveState();
+  if (storageAvailable) {
+    location.reload();
+    return;
+  }
+  alert('Не удалось сохранить всё в памяти браузера — обычно из-за размера текстур. '
+    + 'Данные остались только в этой открытой вкладке: не закрывайте её и сохраните '
+    + 'проект кнопкой «Сохранить проект», чтобы точно не потерять работу.');
+  rebuildUI();
+}
 
 function init() {
   loadState();

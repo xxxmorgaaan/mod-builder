@@ -41,10 +41,14 @@
     <div class="rail-foot">
       <button id="btnSaveProject" class="btn btn-ghost btn-block">Сохранить проект</button>
       <label class="btn btn-ghost btn-block file-btn">
-        Загрузить проект
+        Загрузить проект (.json)
         <input type="file" id="loadProjectInput" accept=".json" hidden>
       </label>
-      <button id="btnResetProject" class="btn btn-ghost btn-block btn-danger-text">Очистить всё</button>
+      <label class="btn btn-ghost btn-block file-btn">
+        Загрузить мод (.zip)
+        <input type="file" id="loadModZipInput" accept=".zip" hidden>
+      </label>
+      <button id="btnResetProject" class="btn btn-ghost btn-block btn-danger-text">Новый мод (очистить всё)</button>
       <div class="rail-links">
         <a href="https://alemcolony-mod-tutorial.netlify.app/" target="_blank" rel="noopener">📖 Полная инструкция по модингу</a>
         <a href="https://t.me/alemcolony" target="_blank" rel="noopener">✈ Telegram-канал разработчика</a>
@@ -65,6 +69,11 @@
       <div class="guide-links">
         <a href="https://alemcolony-mod-tutorial.netlify.app/" target="_blank" rel="noopener" class="btn btn-ghost">📖 Полная инструкция по модингу (сайт разработчика)</a>
         <a href="https://t.me/alemcolony" target="_blank" rel="noopener" class="btn btn-ghost">✈ Telegram-канал Alem Colony</a>
+      </div>
+
+      <div class="guide-note" style="margin-bottom:22px;">
+        Уже есть готовый мод в архиве <code>.zip</code>? Кнопка <b>«Загрузить мод (.zip)»</b> внизу левой колонки
+        откроет его прямо здесь для редактирования — не нужно собирать заново с нуля.
       </div>
 
       <ol class="guide-steps">
