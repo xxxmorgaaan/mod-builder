@@ -279,6 +279,121 @@ function buildUnlocksWidget(controlId, field) {
   return box;
 }
 
+/** Находит ресурс по id/названию или заводит новый — используется виджетами материалов. */
+function resolveOrCreateResourceByName(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
+  const existing = state.tables.resources.find(r => r.id === trimmed || r.name === trimmed);
+  if (existing) return existing.id;
+  const id = idFromName(trimmed, new Set(state.tables.resources.map(r => r.id)), 'pascal');
+  state.tables.resources.push({ id, name: trimmed });
+  saveState();
+  if (sectionRenderers.resources) sectionRenderers.resources();
+  return id;
+}
+
+/**
+ * Выпадающий список материала: готовые ресурсы игры + свои из этого мода +
+ * «Новый ресурс» (заводится на месте, без переключения на вкладку «Ресурсы»).
+ * name можно не задавать — тогда select не привязан к полю формы напрямую
+ * (используется как внутренний пикер в buildMaterialListWidget).
+ */
+function buildResourcePicker(controlId, name) {
+  const box = el('div', { class: 'resource-picker' });
+  const select = el('select', { id: controlId, name });
+  const newInput = el('input', {
+    type: 'text', hidden: true, class: 'resource-new-input',
+    placeholder: 'Название нового ресурса — Enter, чтобы добавить',
+  });
+
+  function refresh(forceValue) {
+    const current = forceValue !== undefined ? forceValue : select.value;
+    select.innerHTML = '';
+    select.appendChild(el('option', { value: '' }, '— не указано —'));
+    RESOURCE_PRESET_GROUPS.forEach(g => {
+      const og = el('optgroup', { label: g.label });
+      g.items.forEach(v => og.appendChild(el('option', { value: v }, v)));
+      select.appendChild(og);
+    });
+    const own = state.tables.resources.map(r => r.id).filter(Boolean);
+    if (own.length) {
+      const og = el('optgroup', { label: 'Ваши ресурсы в этом моде' });
+      own.forEach(v => og.appendChild(el('option', { value: v }, v)));
+      select.appendChild(og);
+    }
+    select.appendChild(el('option', { value: '__new' }, '+ Новый ресурс…'));
+    if (Array.from(select.options).some(o => o.value === current)) select.value = current;
+  }
+
+  select.addEventListener('focus', () => refresh());
+  select.addEventListener('change', () => {
+    if (select.value === '__new') { newInput.hidden = false; newInput.focus(); }
+    else { newInput.hidden = true; }
+  });
+
+  function confirmNew() {
+    const id = resolveOrCreateResourceByName(newInput.value);
+    newInput.value = '';
+    newInput.hidden = true;
+    refresh(id || '');
+  }
+  newInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmNew(); } });
+  newInput.addEventListener('blur', confirmNew);
+
+  refresh();
+  box.appendChild(select);
+  box.appendChild(newInput);
+  return box;
+}
+
+/**
+ * Список «материал × количество» (для «more»/«extra») — чипы вместо ручного
+ * JSON. Хранит значение в hidden input (тот же паттерн, что buildUnlocksWidget).
+ */
+function buildMaterialListWidget(controlId, name) {
+  const box = el('div', { class: 'material-list-widget' });
+  const hidden = el('input', { type: 'hidden', id: controlId, name });
+  let items = [];
+
+  const chipRow = el('div', { class: 'chip-row' });
+  function syncHidden() { hidden.value = items.length ? JSON.stringify(items) : ''; }
+  function renderChips() {
+    chipRow.innerHTML = '';
+    if (!items.length) { chipRow.appendChild(el('span', { class: 'empty-hint-inline' }, 'пока нет доп. материалов')); return; }
+    items.forEach((it, i) => {
+      const chip = el('span', { class: 'chip' }, [
+        `${it.res} × ${it.count}`,
+        el('button', { type: 'button', class: 'chip-x', 'aria-label': 'Удалить' }, '×'),
+      ]);
+      chip.querySelector('.chip-x').addEventListener('click', () => { items.splice(i, 1); syncHidden(); renderChips(); });
+      chipRow.appendChild(chip);
+    });
+  }
+  hidden.__setItems = (arr) => {
+    items = Array.isArray(arr) ? arr.filter(x => x && x.res).map(x => ({ res: x.res, count: Number(x.count) || 1 })) : [];
+    syncHidden(); renderChips();
+  };
+  renderChips();
+
+  const picker = buildResourcePicker(`${controlId}-pick`);
+  const pickerSelect = picker.querySelector('select');
+  const countInput = el('input', { type: 'number', min: 1, step: 1, value: '1', class: 'material-count-input' });
+  const addBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, 'Добавить материал');
+  addBtn.addEventListener('click', () => {
+    const res = pickerSelect.value;
+    if (!res || res === '__new') { alert('Выберите материал (или заведите новый ресурс и подтвердите Enter/уходом из поля).'); return; }
+    const count = Math.max(1, Number(countInput.value) || 1);
+    items.push({ res, count });
+    syncHidden(); renderChips();
+    countInput.value = '1';
+  });
+
+  box.appendChild(chipRow);
+  box.appendChild(el('div', { class: 'material-add-row' }, [picker, countInput, addBtn]));
+  box.appendChild(hidden);
+  return box;
+}
+
 function buildFieldControl(field, formId) {
   const controlId = `f-${formId}-${field.name}`;
   const wrap = el('div', { class: 'field' + (field.wide ? ' field-wide' : '') });
@@ -320,6 +435,14 @@ function buildFieldControl(field, formId) {
     wrap.appendChild(buildUnlocksWidget(controlId, field));
     if (field.hint) wrap.appendChild(el('p', { class: 'field-hint' }, field.hint));
     return wrap;
+  } else if (field.type === 'resource') {
+    wrap.appendChild(buildResourcePicker(controlId, field.name));
+    if (field.hint) wrap.appendChild(el('p', { class: 'field-hint' }, field.hint));
+    return wrap;
+  } else if (field.type === 'materialList') {
+    wrap.appendChild(buildMaterialListWidget(controlId, field.name));
+    if (field.hint) wrap.appendChild(el('p', { class: 'field-hint' }, field.hint));
+    return wrap;
   } else if (field.type === 'number') {
     input = el('input', {
       type: 'number', id: controlId, name: field.name,
@@ -352,7 +475,8 @@ function readFieldFromForm(field, formEl) {
       if (raw === '') return undefined;
       return field.numeric ? Number(raw) : raw;
     }
-    case 'json': {
+    case 'json':
+    case 'materialList': {
       if (raw === '') return undefined;
       try { return JSON.parse(raw); }
       catch (e) { throw new FieldError(field, 'некорректный JSON — ' + e.message); }
@@ -371,6 +495,7 @@ function writeFieldToForm(field, formEl, value) {
   const input = formEl.elements[field.name];
   if (field.type === 'checkbox') { input.checked = !!value; return; }
   if (field.type === 'unlocks') { input.__setKeys ? input.__setKeys(value) : (input.value = Array.isArray(value) ? value.join(', ') : ''); return; }
+  if (field.type === 'materialList') { input.__setItems ? input.__setItems(value) : (input.value = value ? JSON.stringify(value) : ''); return; }
   if (value === undefined || value === null) { input.value = ''; return; }
   if (field.type === 'json') { input.value = JSON.stringify(value, null, 1); return; }
   if (field.type === 'list') { input.value = Array.isArray(value) ? value.join(', ') : String(value); return; }
@@ -536,17 +661,18 @@ function initSchemaSection(schemaKey) {
   actions.appendChild(cancelBtn);
   form.appendChild(actions);
 
-  function resetUnlocksWidgets() {
+  function resetCustomWidgets() {
     schema.fields.forEach(f => {
-      if (f.type !== 'unlocks') return;
       const inp = form.elements[f.name];
-      if (inp && inp.__setKeys) inp.__setKeys([]);
+      if (!inp) return;
+      if (f.type === 'unlocks' && inp.__setKeys) inp.__setKeys([]);
+      if (f.type === 'materialList' && inp.__setItems) inp.__setItems([]);
     });
   }
 
   cancelBtn.addEventListener('click', () => {
     form.reset();
-    resetUnlocksWidgets();
+    resetCustomWidgets();
     if (techUI) techUI.reset();
     sectionEditState[schemaKey] = null;
     submitBtn.textContent = `Добавить ${schema.title}`;
@@ -599,7 +725,7 @@ function initSchemaSection(schemaKey) {
     applyTechLink(schemaKey, item, techChoice);
     if (item.name) ensureLocDraft(item.name);
     form.reset();
-    resetUnlocksWidgets();
+    resetCustomWidgets();
     if (techUI) techUI.reset();
     saveState();
     renderList();
@@ -999,6 +1125,23 @@ function validateProject() {
       seen.add(key);
     });
   });
+
+  // Два костюма в одном слоте делят один и тот же номер look — второй
+  // перекроет первый на экране, слот один look = одна вещь.
+  {
+    const bySlot = new Map();
+    state.tables.apparel.forEach(a => {
+      if (a.look === undefined) return;
+      const slotKey = `${a.slot || 'Torso'}#${a.look}`;
+      if (!bySlot.has(slotKey)) bySlot.set(slotKey, []);
+      bySlot.get(slotKey).push(a);
+    });
+    bySlot.forEach((items, slotKey) => {
+      if (items.length < 2) return;
+      const [slot, look] = slotKey.split('#');
+      warnings.push(`«${items.map(a => a.name || a.id).join('» и «')}» делят look ${look} в слоте ${slot} — в игре они наложатся друг на друга. Дайте каждому свой номер (например ${Number(look) + 1}).`);
+    });
+  }
 
   // Не привязано ни к одной технологии — сделать вещь в игре будет нельзя.
   ['weapons', 'apparel', 'recipes', 'buildings'].forEach(k => {

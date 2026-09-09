@@ -48,12 +48,12 @@ const SCHEMAS = {
       { name: 'hitLabel', label: 'Название удара', type: 'text', placeholder: 'Удар кылышем' },
       { name: 'drawScale', label: 'Размер картинки', type: 'number', step: '0.01' },
       { name: 'spriteAngle', label: 'Поворот картинки, °', type: 'number', step: '1' },
-      { name: 'cost1Type', label: 'Материал 1: тип', type: 'text' },
+      { name: 'cost1Type', label: 'Материал 1: тип', type: 'resource' },
       { name: 'cost1', label: 'Материал 1: кол-во', type: 'number', step: '1' },
-      { name: 'cost2Type', label: 'Материал 2: тип', type: 'text' },
+      { name: 'cost2Type', label: 'Материал 2: тип', type: 'resource' },
       { name: 'cost2', label: 'Материал 2: кол-во', type: 'number', step: '1' },
       { name: 'craftWork', label: 'Работа на изготовление', type: 'number', step: '1' },
-      { name: 'more', label: 'Доп. ингредиенты (JSON)', type: 'json', placeholder: '[{"res":"Rivets","count":4}]', wide: true },
+      { name: 'more', label: 'Доп. материалы', type: 'materialList', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
     ],
   },
 
@@ -73,7 +73,7 @@ const SCHEMAS = {
       ] },
       { name: 'name', label: 'Название варианта', type: 'text', placeholder: 'железный' },
       { name: 'dmgMul', label: 'Множитель урона', type: 'number', step: '0.01' },
-      { name: 'res', label: 'Ресурс', type: 'text', placeholder: 'Iron' },
+      { name: 'res', label: 'Ресурс', type: 'resource' },
       { name: 'amount', label: 'Кол-во ресурса', type: 'number', step: '1' },
     ],
   },
@@ -102,14 +102,14 @@ const SCHEMAS = {
       { name: 'insHeat', label: 'Защита от жары', type: 'number', step: '1' },
       { name: 'maxHp', label: 'Прочность', type: 'number', step: '1' },
       { name: 'look', label: 'Номер картинки слоя (look)', type: 'number', step: '1' },
-      { name: 'matType', label: 'Материал пошива', type: 'text', placeholder: 'Leather' },
+      { name: 'matType', label: 'Материал пошива', type: 'resource' },
       { name: 'matCost', label: 'Кол-во материала', type: 'number', step: '1' },
       { name: 'waterproof', label: 'Защита от намокания (0…1)', type: 'number', step: '0.01' },
       { name: 'tendBonus', label: 'Бонус к лечению', type: 'number', step: '0.01' },
       { name: 'colorful', label: 'Красится игроком при пошиве', type: 'checkbox' },
       { name: 'coversFace', label: 'Закрывает лицо (скрывает бороду)', type: 'checkbox' },
       { name: 'tint', label: 'Постоянный цвет', type: 'color' },
-      { name: 'more', label: 'Доп. материалы (JSON)', type: 'json', placeholder: '[{"res":"Rivets","count":6}]', wide: true },
+      { name: 'more', label: 'Доп. материалы', type: 'materialList', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
     ],
   },
 
@@ -174,7 +174,7 @@ const SCHEMAS = {
       ] },
       { name: 'name', label: 'Название заказа', type: 'text', required: true, placeholder: 'Выплавить мифрил' },
       { name: 'id', label: 'id (необязательно — сделаю из названия)', type: 'text', placeholder: 'mithril_ingot' },
-      { name: 'in1Type', label: 'Ингредиент 1: тип', type: 'text', placeholder: 'SilverOre' },
+      { name: 'in1Type', label: 'Ингредиент 1: тип', type: 'resource' },
       { name: 'in1', label: 'Ингредиент 1: кол-во', type: 'number', step: '1' },
       { name: 'in1Group', label: 'Ингредиент 1: группа', type: 'select', numeric: true, options: [
         { value: '', label: '— точный тип —' },
@@ -182,7 +182,7 @@ const SCHEMAS = {
         { value: '1', label: '1 · любое мясо' },
         { value: '2', label: '2 · любая растительная еда' },
       ] },
-      { name: 'in2Type', label: 'Ингредиент 2: тип', type: 'text', placeholder: 'Coal' },
+      { name: 'in2Type', label: 'Ингредиент 2: тип', type: 'resource' },
       { name: 'in2', label: 'Ингредиент 2: кол-во', type: 'number', step: '1' },
       { name: 'in2Group', label: 'Ингредиент 2: группа', type: 'select', numeric: true, options: [
         { value: '', label: '— точный тип —' },
@@ -190,16 +190,16 @@ const SCHEMAS = {
         { value: '1', label: '1 · любое мясо' },
         { value: '2', label: '2 · любая растительная еда' },
       ] },
-      { name: 'outType', label: 'Результат: тип', type: 'text', placeholder: 'Mithril' },
+      { name: 'outType', label: 'Результат: тип', type: 'resource' },
       { name: 'outCount', label: 'Результат: кол-во', type: 'number', step: '1' },
-      { name: 'outType2', label: 'Побочный продукт: тип', type: 'text' },
+      { name: 'outType2', label: 'Побочный продукт: тип', type: 'resource' },
       { name: 'outCount2', label: 'Побочный продукт: кол-во', type: 'number', step: '1' },
       { name: 'work', label: 'Работа на порцию', type: 'number', step: '1' },
       { name: 'weaponId', label: 'Делает оружие с id', type: 'text' },
       { name: 'apparelId', label: 'Шьёт одежду с id', type: 'text' },
       { name: 'colorPick', label: 'Показать выбор цвета', type: 'checkbox' },
       { name: 'medicinePool', label: 'Берёт лекарства из общего пула', type: 'checkbox' },
-      { name: 'more', label: 'Доп. ингредиенты (JSON)', type: 'json', placeholder: '[{"type":"Cloth","count":2}]', wide: true },
+      { name: 'more', label: 'Доп. ингредиенты', type: 'materialList', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
     ],
   },
 
@@ -211,11 +211,11 @@ const SCHEMAS = {
     fields: [
       { name: 'kind', label: 'kind (вид постройки)', type: 'text', required: true, placeholder: 'Wall', hint: 'Имя должно быть игровым' },
       { name: 'variant', label: 'variant (если есть)', type: 'text' },
-      { name: 'costType', label: 'Материал', type: 'text' },
+      { name: 'costType', label: 'Материал', type: 'resource' },
       { name: 'costAmount', label: 'Кол-во материала', type: 'number', step: '1' },
       { name: 'work', label: 'Секунд работы', type: 'number', step: '1' },
       { name: 'hp', label: 'Прочность', type: 'number', step: '1' },
-      { name: 'extra', label: 'Доп. компоненты (JSON)', type: 'json', placeholder: '[{"res":"SteelMechanism","count":2}]', wide: true },
+      { name: 'extra', label: 'Доп. компоненты', type: 'materialList', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
     ],
   },
 
@@ -363,6 +363,19 @@ const UNLOCK_TYPES = [
   { value: 'siege', label: 'siege · осадное орудие', placeholder: 'Mortar' },
   { value: 'crop', label: 'crop · культура грядки', placeholder: 'oak' },
   { value: 'mech', label: 'mech · механика игры', placeholder: 'hunting', suggestions: ['hunting', 'fishing', 'taming', 'trading', 'firstaid'] },
+];
+
+/**
+ * Готовые ресурсы игры (раздел про полный список) — показываются в
+ * выпадающем списке материала, сгруппированными. Список не исчерпывающий:
+ * свои ресурсы из вкладки «Ресурсы» добавляются в свою группу автоматически,
+ * а «+ Новый ресурс…» заводит ещё один прямо на месте.
+ */
+const RESOURCE_PRESET_GROUPS = [
+  { label: 'Дерево и камень', items: ['Wood', 'Planks', 'LimestoneChunk', 'GraniteChunk', 'LimestoneBlock', 'GraniteBlock', 'Hay', 'Gems'] },
+  { label: 'Металлы и руды', items: ['IronOre', 'Iron', 'Coal', 'Steel', 'CopperOre', 'Copper', 'Bronze', 'LeadOre', 'Lead', 'GoldOre', 'SilverOre', 'Sulfur', 'Saltpeter', 'Glass'] },
+  { label: 'Компоненты', items: ['Rivets', 'IronComponent', 'Gears', 'Springs', 'SteelMechanism', 'PreciseParts'] },
+  { label: 'Ткани', items: ['Cloth', 'Leather', 'Fur', 'Wool'] },
 ];
 
 /**

@@ -45,6 +45,10 @@
         <input type="file" id="loadProjectInput" accept=".json" hidden>
       </label>
       <button id="btnResetProject" class="btn btn-ghost btn-block btn-danger-text">Очистить всё</button>
+      <div class="rail-links">
+        <a href="https://alemcolony-mod-tutorial.netlify.app/" target="_blank" rel="noopener">📖 Полная инструкция по модингу</a>
+        <a href="https://t.me/alemcolony" target="_blank" rel="noopener">✈ Telegram-канал разработчика</a>
+      </div>
     </div>
   </aside>
 
@@ -58,6 +62,11 @@
         <p>Коротко: пишете название — остальное конструктор в большинстве случаев подставляет сам. Ниже — по шагам.</p>
       </header>
 
+      <div class="guide-links">
+        <a href="https://alemcolony-mod-tutorial.netlify.app/" target="_blank" rel="noopener" class="btn btn-ghost">📖 Полная инструкция по модингу (сайт разработчика)</a>
+        <a href="https://t.me/alemcolony" target="_blank" rel="noopener" class="btn btn-ghost">✈ Telegram-канал Alem Colony</a>
+      </div>
+
       <ol class="guide-steps">
         <li>
           <h3>1. Вкладка «Мод»</h3>
@@ -69,7 +78,8 @@
           <ul>
             <li><b>id</b> конструктор сделает из названия сам («Кылыш» → <code>kylysh</code>).</li>
             <li>У оружия сверху есть выпадающий <b>«Шаблон»</b> (нож, меч, копьё…) — подставит характеристики. Не выбрали шаблон и не тронули поля — конструктор всё равно даст безопасные значения по умолчанию.</li>
-            <li>У одежды сама подставится <b>слот</b> (Torso), <b>материал</b>, <b>прочность</b> и <b>номер картинки (look)</b> — без коллизий с другими вашими вещами.</li>
+            <li>У одежды сама подставится <b>слот</b> (Torso), <b>материал</b>, <b>прочность</b> и <b>номер картинки (look)</b> — без коллизий с другими вашими вещами (два костюма в одном слоте не могут делить один look: занят 3 — следующий получит 4).</li>
+            <li>«Материал» и «доп. материалы» — не текст, а список: готовые ресурсы игры (дерево, железо, ткань, кожа…) плюс ваши уже добавленные, плюс «+ Новый ресурс» тут же на месте.</li>
             <li>Черновая строка в <b>«Перевод»</b> появляется сама, как только вписано название.</li>
           </ul>
         </li>
